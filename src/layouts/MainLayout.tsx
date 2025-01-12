@@ -2,7 +2,7 @@ import React from "react";
 import { Outlet } from "react-router-dom";
 import Navigation from "@/components/shared/Navigation";
 
-const AdminLayout = () => {
+const MainLayout = () => {
   return (
     <div className="min-h-screen bg-[#1e1f2e]">
       <Navigation />
@@ -13,4 +13,4 @@ const AdminLayout = () => {
   );
 };
 
-export default AdminLayout;
+export default MainLayout;
