@@ -1,16 +1,23 @@
 import React, { useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Search, Filter, ExternalLink, Edit2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { MetricsDisplay } from "@/components/shared/MetricsDisplay";
+import {
+  Search,
+  Filter,
+  ExternalLink,
+  Edit2,
+  Trash2,
+  AlertCircle,
+  RefreshCw,
+  ArrowUpDown,
+  Clock,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -19,229 +26,233 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface Link {
+interface Backlink {
   id: string;
-  targetSite: string;
+  targetUrl: string;
   keyword: string;
   addedSite: string;
   da: number;
   pa: number;
   status: "active" | "pending" | "removed";
+  indexStatus: "indexed" | "pending" | "failed";
   addedDate: string;
   expiryDate: string;
+  lastChecked: string;
 }
 
-const generateLinks = (count: number): Link[] => {
-  return Array.from({ length: count }, (_, i) => ({
-    id: `${i + 1}`,
-    targetSite: `example${i + 1}.com`,
-    keyword: `Keyword ${i + 1}`,
-    addedSite: `blog${i + 1}.com`,
-    da: Math.floor(Math.random() * 50) + 20,
-    pa: Math.floor(Math.random() * 40) + 15,
-    status: ["active", "pending", "removed"][
-      Math.floor(Math.random() * 3)
-    ] as Link["status"],
-    addedDate: "2024-01-15",
-    expiryDate: "2025-01-15",
-  }));
-};
-
 const MyLinks = () => {
-  const [links] = useState(generateLinks(100));
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("date-desc");
 
-  const filteredLinks = links.filter((link) => {
-    const matchesSearch =
-      link.targetSite.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      link.keyword.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || link.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // Örnek veri
+  const backlinks: Backlink[] = [
+    {
+      id: "1",
+      targetUrl: "https://example.com/page1",
+      keyword: "dijital pazarlama",
+      addedSite: "blog1.com",
+      da: 45,
+      pa: 38,
+      status: "active",
+      indexStatus: "indexed",
+      addedDate: "2024-01-15",
+      expiryDate: "2025-01-15",
+      lastChecked: "2024-01-20",
+    },
+    {
+      id: "2",
+      targetUrl: "https://example.com/page2",
+      keyword: "seo hizmetleri",
+      addedSite: "blog2.com",
+      da: 35,
+      pa: 28,
+      status: "pending",
+      indexStatus: "pending",
+      addedDate: "2024-01-14",
+      expiryDate: "2025-01-14",
+      lastChecked: "2024-01-20",
+    },
+  ];
 
-  const paginatedLinks = filteredLinks.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
-  );
-
-  const totalPages = Math.ceil(filteredLinks.length / pageSize);
+  const stats = {
+    total: backlinks.length,
+    active: backlinks.filter((b) => b.status === "active").length,
+    pending: backlinks.filter((b) => b.status === "pending").length,
+    indexed: backlinks.filter((b) => b.indexStatus === "indexed").length,
+  };
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-white">Linklerim</h1>
-        <div className="flex items-center gap-4">
-          <div className="relative">
+        <h1 className="text-2xl font-bold text-white">Backlinklerim</h1>
+        <Button className="bg-purple-600 hover:bg-purple-700 gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Tümünü Kontrol Et
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card className="bg-[#2a2b3d] p-4 border-0">
+          <h3 className="text-gray-400 mb-2">Toplam Backlink</h3>
+          <p className="text-2xl font-bold text-white">{stats.total}</p>
+        </Card>
+        <Card className="bg-[#2a2b3d] p-4 border-0">
+          <h3 className="text-gray-400 mb-2">Aktif Linkler</h3>
+          <p className="text-2xl font-bold text-green-500">{stats.active}</p>
+        </Card>
+        <Card className="bg-[#2a2b3d] p-4 border-0">
+          <h3 className="text-gray-400 mb-2">Bekleyen Linkler</h3>
+          <p className="text-2xl font-bold text-yellow-500">{stats.pending}</p>
+        </Card>
+        <Card className="bg-[#2a2b3d] p-4 border-0">
+          <h3 className="text-gray-400 mb-2">İndexlenen</h3>
+          <p className="text-2xl font-bold text-blue-500">{stats.indexed}</p>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card className="bg-[#2a2b3d] p-4 border-0">
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <input
-              type="text"
-              placeholder="Link ara..."
-              className="pl-10 pr-4 py-2 bg-[#2a2b3d] border-0 rounded-md text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:outline-none w-[300px]"
+            <Input
+              placeholder="Backlink ara..."
+              className="pl-10 bg-[#1e1f2e] border-0"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-4">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] bg-[#2a2b3d] border-0">
-                <SelectValue placeholder="Durum Filtrele" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tümü</SelectItem>
-                <SelectItem value="active">Aktif</SelectItem>
-                <SelectItem value="pending">Beklemede</SelectItem>
-                <SelectItem value="removed">Kaldırıldı</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={pageSize.toString()}
-              onValueChange={(val) => setPageSize(Number(val))}
-            >
-              <SelectTrigger className="w-[180px] bg-[#2a2b3d] border-0">
-                <SelectValue placeholder="Sayfa başına göster" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10 kayıt</SelectItem>
-                <SelectItem value="20">20 kayıt</SelectItem>
-                <SelectItem value="50">50 kayıt</SelectItem>
-                <SelectItem value="100">100 kayıt</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px] bg-[#1e1f2e] border-0">
+              <SelectValue placeholder="Durum Filtrele" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tümü</SelectItem>
+              <SelectItem value="active">Aktif</SelectItem>
+              <SelectItem value="pending">Beklemede</SelectItem>
+              <SelectItem value="removed">Kaldırıldı</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[180px] bg-[#1e1f2e] border-0">
+              <SelectValue placeholder="Sıralama" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date-desc">Tarih (Yeni-Eski)</SelectItem>
+              <SelectItem value="date-asc">Tarih (Eski-Yeni)</SelectItem>
+              <SelectItem value="da-desc">DA (Yüksek-Düşük)</SelectItem>
+              <SelectItem value="da-asc">DA (Düşük-Yüksek)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </div>
+      </Card>
 
-      <div className="grid grid-cols-4 gap-4">
-        <Card className="bg-[#2a2b3d] p-4 border-0">
-          <h3 className="text-gray-400 mb-2">Toplam Link</h3>
-          <p className="text-2xl font-bold text-white">{links.length}</p>
-        </Card>
-        <Card className="bg-[#2a2b3d] p-4 border-0">
-          <h3 className="text-gray-400 mb-2">Aktif Linkler</h3>
-          <p className="text-2xl font-bold text-green-500">
-            {links.filter((l) => l.status === "active").length}
-          </p>
-        </Card>
-        <Card className="bg-[#2a2b3d] p-4 border-0">
-          <h3 className="text-gray-400 mb-2">Bekleyen Linkler</h3>
-          <p className="text-2xl font-bold text-yellow-500">
-            {links.filter((l) => l.status === "pending").length}
-          </p>
-        </Card>
-        <Card className="bg-[#2a2b3d] p-4 border-0">
-          <h3 className="text-gray-400 mb-2">Kaldırılan Linkler</h3>
-          <p className="text-2xl font-bold text-red-500">
-            {links.filter((l) => l.status === "removed").length}
-          </p>
-        </Card>
-      </div>
-
-      <div className="bg-[#1e1f2e] rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-[#2a2b3d] border-b border-gray-700">
-              <TableHead className="text-gray-400">HEDEF SİTE</TableHead>
-              <TableHead className="text-gray-400">ANAHTAR KELİME</TableHead>
-              <TableHead className="text-gray-400">EKLENDİĞİ SİTE</TableHead>
-              <TableHead className="text-gray-400">DA/PA</TableHead>
-              <TableHead className="text-gray-400">DURUM</TableHead>
-              <TableHead className="text-gray-400">EKLENME TARİHİ</TableHead>
-              <TableHead className="text-gray-400">BİTİŞ TARİHİ</TableHead>
-              <TableHead className="text-gray-400">İŞLEMLER</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedLinks.map((link) => (
-              <TableRow
-                key={link.id}
-                className="hover:bg-[#2a2b3d] border-b border-gray-700"
-              >
-                <TableCell className="text-white">{link.targetSite}</TableCell>
-                <TableCell className="text-white">{link.keyword}</TableCell>
-                <TableCell className="text-white">{link.addedSite}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Badge
-                      variant="outline"
-                      className="bg-purple-500 text-white border-0"
-                    >
-                      DA: {link.da}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className="bg-blue-500 text-white border-0"
-                    >
-                      PA: {link.pa}
-                    </Badge>
-                  </div>
-                </TableCell>
-                <TableCell>
+      {/* Backlinks List */}
+      <div className="space-y-4">
+        {backlinks.map((backlink) => (
+          <Card key={backlink.id} className="bg-[#2a2b3d] p-4 border-0">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-white font-medium">
+                    {backlink.addedSite}
+                  </h3>
                   <Badge
                     variant="outline"
-                    className={`${link.status === "active" ? "bg-green-500" : link.status === "pending" ? "bg-yellow-500" : "bg-red-500"} text-white border-0`}
+                    className={`${
+                      backlink.status === "active"
+                        ? "bg-green-500"
+                        : backlink.status === "pending"
+                          ? "bg-yellow-500"
+                          : "bg-red-500"
+                    } text-white border-0`}
                   >
-                    {link.status === "active"
+                    {backlink.status === "active"
                       ? "Aktif"
-                      : link.status === "pending"
+                      : backlink.status === "pending"
                         ? "Beklemede"
                         : "Kaldırıldı"}
                   </Badge>
-                </TableCell>
-                <TableCell className="text-white">{link.addedDate}</TableCell>
-                <TableCell className="text-white">{link.expiryDate}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="hover:bg-purple-500/20 hover:text-purple-500"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="hover:bg-blue-500/20 hover:text-blue-500"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
+                  <Badge
+                    variant="outline"
+                    className={`${
+                      backlink.indexStatus === "indexed"
+                        ? "bg-blue-500"
+                        : backlink.indexStatus === "pending"
+                          ? "bg-yellow-500"
+                          : "bg-red-500"
+                    } text-white border-0`}
+                  >
+                    {backlink.indexStatus === "indexed"
+                      ? "İndexlendi"
+                      : backlink.indexStatus === "pending"
+                        ? "İndexleniyor"
+                        : "İndexlenmedi"}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-4 text-sm text-gray-400">
+                  <div className="flex items-center gap-1">
+                    <ExternalLink className="h-4 w-4" />
+                    <span>{backlink.targetUrl}</span>
                   </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-400">
-          Toplam {filteredLinks.length} kayıttan{" "}
-          {(currentPage - 1) * pageSize + 1} -{" "}
-          {Math.min(currentPage * pageSize, filteredLinks.length)} arası
-          gösteriliyor
-        </p>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="bg-[#2a2b3d] text-white border-0"
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-          >
-            Önceki
-          </Button>
-          <Button
-            variant="outline"
-            className="bg-[#2a2b3d] text-white border-0"
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-          >
-            Sonraki
-          </Button>
-        </div>
+                  <div className="flex items-center gap-1">
+                    <ArrowUpDown className="h-4 w-4" />
+                    <span>{backlink.keyword}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <MetricsDisplay
+                  metrics={{
+                    da: backlink.da,
+                    pa: backlink.pa,
+                    spamScore: 2,
+                  }}
+                  size="sm"
+                />
+                <div className="flex flex-col gap-2">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="hover:bg-blue-500/20 hover:text-blue-500"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="hover:bg-red-500/20 hover:text-red-500"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-700 flex items-center justify-between text-sm">
+              <div className="flex items-center gap-4 text-gray-400">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  <span>Eklenme: {backlink.addedDate}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  <span>Bitiş: {backlink.expiryDate}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400">Son Kontrol:</span>
+                <span className="text-white">{backlink.lastChecked}</span>
+                <Button size="sm" variant="outline" className="gap-2">
+                  <RefreshCw className="h-3 w-3" />
+                  Kontrol Et
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
       </div>
     </div>
   );

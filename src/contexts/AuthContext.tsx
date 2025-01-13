@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "@/services/api";
+import { toast } from "@/components/ui/use-toast";
 
 interface User {
   id: string;
@@ -19,12 +22,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Session kontrolü
     const checkAuth = () => {
       const savedUser = localStorage.getItem("user");
-      if (savedUser) {
+      const token = localStorage.getItem("token");
+      if (savedUser && token) {
         setUser(JSON.parse(savedUser));
       }
       setIsLoading(false);
@@ -35,41 +39,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      // Örnek kullanıcılar (gerçek uygulamada API'den gelecek)
-      const users = {
-        "admin@example.com": {
-          id: "1",
-          email: "admin@example.com",
-          password: "admin123",
-          role: "admin",
-          name: "Admin User",
-        },
-        "client@example.com": {
-          id: "2",
-          email: "client@example.com",
-          password: "client123",
-          role: "client",
-          name: "Client User",
-        },
-      };
+      setIsLoading(true);
+      const response = await api.auth.login(email, password);
 
-      const user = users[email as keyof typeof users];
-
-      if (!user || user.password !== password) {
-        throw new Error("Invalid credentials");
+      if (response.success && response.data) {
+        const { token, user } = response.data;
+        setUser(user);
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
+        toast({
+          title: "Success",
+          description: "Login successful",
+        });
+        navigate(user.role === "admin" ? "/admin" : "/dashboard");
+      } else {
+        throw new Error(response.error || "Invalid credentials");
       }
-
-      const { password: _, ...userWithoutPassword } = user;
-      setUser(userWithoutPassword as User);
-      localStorage.setItem("user", JSON.stringify(userWithoutPassword));
     } catch (error) {
-      throw new Error("Login failed");
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Login failed",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
+  const logout = async () => {
+    try {
+      await api.auth.logout();
+    } finally {
+      setUser(null);
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      toast({
+        title: "Success",
+        description: "Logged out successfully",
+      });
+      navigate("/login");
+    }
   };
 
   return (

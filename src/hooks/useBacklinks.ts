@@ -1,12 +1,12 @@
 import { useState, useCallback } from "react";
 import { api } from "@/services/api";
 import { useStore } from "@/store";
+import { toast } from "@/components/ui/use-toast";
 import { Backlink } from "@/types/api";
 
 export const useBacklinks = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const {
     backlinks,
     setBacklinks,
@@ -19,12 +19,21 @@ export const useBacklinks = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await api.backlinks.getAll();
-      setBacklinks(data);
+      const response = await api.backlinks.getAll();
+      if (response.success && response.data) {
+        setBacklinks(response.data);
+      } else {
+        throw new Error(response.error || "Failed to fetch backlinks");
+      }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch backlinks",
-      );
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to fetch backlinks";
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -35,13 +44,26 @@ export const useBacklinks = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const newBacklink = await api.backlinks.create(data);
-        addBacklink(newBacklink);
-        return newBacklink;
+        const response = await api.backlinks.create(data);
+        if (response.success && response.data) {
+          addBacklink(response.data);
+          toast({
+            title: "Success",
+            description: "Backlink created successfully",
+          });
+          return response.data;
+        } else {
+          throw new Error(response.error || "Failed to create backlink");
+        }
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to create backlink",
-        );
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to create backlink";
+        setError(errorMessage);
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
         throw err;
       } finally {
         setIsLoading(false);
@@ -50,59 +72,33 @@ export const useBacklinks = () => {
     [addBacklink],
   );
 
-  const updateBacklinkById = useCallback(
-    async (id: string, data: Partial<Backlink>) => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const updatedBacklink = await api.backlinks.update(id, data);
-        updateBacklink(id, updatedBacklink);
-        return updatedBacklink;
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to update backlink",
-        );
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [updateBacklink],
-  );
-
-  const deleteBacklink = useCallback(
-    async (id: string) => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        await api.backlinks.delete(id);
-        removeBacklink(id);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to delete backlink",
-        );
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [removeBacklink],
-  );
-
   const bulkCreateBacklinks = useCallback(
     async (targetUrl: string, links: string[]) => {
       try {
         setIsLoading(true);
         setError(null);
-        const result = await api.backlinks.bulkCreate({ targetUrl, links });
-        await fetchBacklinks(); // Refresh the list after bulk creation
-        return result;
+        const response = await api.backlinks.bulkCreate({ targetUrl, links });
+        if (response.success) {
+          await fetchBacklinks(); // Refresh the list after bulk creation
+          toast({
+            title: "Success",
+            description: "Backlinks created successfully",
+          });
+          return response.data;
+        } else {
+          throw new Error(response.error || "Failed to bulk create backlinks");
+        }
       } catch (err) {
-        setError(
+        const errorMessage =
           err instanceof Error
             ? err.message
-            : "Failed to bulk create backlinks",
-        );
+            : "Failed to bulk create backlinks";
+        setError(errorMessage);
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
         throw err;
       } finally {
         setIsLoading(false);
@@ -111,36 +107,12 @@ export const useBacklinks = () => {
     [fetchBacklinks],
   );
 
-  const bulkDeleteBacklinks = useCallback(
-    async (ids: string[]) => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        await api.backlinks.bulkDelete(ids);
-        ids.forEach(removeBacklink);
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to bulk delete backlinks",
-        );
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [removeBacklink],
-  );
-
   return {
     backlinks,
     isLoading,
     error,
     fetchBacklinks,
     createBacklink,
-    updateBacklink: updateBacklinkById,
-    deleteBacklink,
     bulkCreateBacklinks,
-    bulkDeleteBacklinks,
   };
 };

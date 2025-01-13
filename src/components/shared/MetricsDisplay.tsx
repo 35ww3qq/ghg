@@ -26,11 +26,11 @@ const defaultMetrics = {
   spamScore: 2,
 };
 
-const MetricsDisplay = ({
+const MetricsDisplay: React.FC<MetricsDisplayProps> = ({
   metrics = defaultMetrics,
   showLabels = true,
   size = "md",
-}: MetricsDisplayProps) => {
+}) => {
   const sizeClasses = {
     sm: "p-2 text-sm",
     md: "p-4 text-base",
@@ -139,4 +139,5 @@ const MetricsDisplay = ({
   );
 };
 
+export { MetricsDisplay };
 export default MetricsDisplay;

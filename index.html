@@ -5,20 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Backlink Yönetim Sistemi</title>
-    <!-- Development CSP -->
     <meta
       http-equiv="Content-Security-Policy"
       content="
-      default-src * 'unsafe-inline' 'unsafe-eval';
-      img-src * data: blob: 'unsafe-inline';
-      connect-src * 'unsafe-inline';
-    "
+        default-src * 'self';
+        script-src * 'unsafe-inline' 'unsafe-eval' 'self' blob: data:;
+        style-src * 'unsafe-inline' 'self';
+        img-src * data: blob: 'self';
+        media-src * blob: 'self';
+        connect-src * 'self';
+        font-src * 'self';
+        frame-src * 'self';
+        worker-src * blob: data: 'self';
+      "
     />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- Tempo error handling -->
-    <script src="https://api.tempolabs.ai/proxy-asset?url=https://storage.googleapis.com/tempo-public-assets/error-handling.js"></script>
   </body>
 </html>

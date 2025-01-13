@@ -7,208 +7,125 @@ import {
   BacklinkStats,
 } from "@/types/api";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://api.example.com";
+interface ApiResponse<T> {
+  success: boolean;
+  data: T | null;
+  error: string | null;
+}
 
-const handleResponse = async (response: Response) => {
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "API request failed");
+// Demo mode flag
+const IS_DEMO = true; // Set this to false when connecting to real API
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+const handleResponse = async <T>(
+  response: Response,
+): Promise<ApiResponse<T>> => {
+  try {
+    const data = await response.json();
+    if (!response.ok) {
+      return {
+        success: false,
+        data: null,
+        error: data.message || "API request failed",
+      };
+    }
+    return {
+      success: true,
+      data,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    };
   }
-  return response.json();
+};
+
+const headers = {
+  "Content-Type": "application/json",
+  Accept: "application/json",
+};
+
+const getAuthHeader = () => {
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+// Demo data
+const DEMO_USERS = {
+  "admin@example.com": {
+    id: "1",
+    email: "admin@example.com",
+    password: "admin123",
+    role: "admin",
+    name: "Admin User",
+  },
+  "client@example.com": {
+    id: "2",
+    email: "client@example.com",
+    password: "client123",
+    role: "client",
+    name: "Client User",
+  },
 };
 
 export const api = {
-  // Auth
   auth: {
     login: async (email: string, password: string) => {
+      if (IS_DEMO) {
+        // Demo login logic
+        return new Promise<ApiResponse<{ token: string; user: any }>>(
+          (resolve) => {
+            setTimeout(() => {
+              const user = DEMO_USERS[email as keyof typeof DEMO_USERS];
+              if (user && user.password === password) {
+                const token = btoa(`${email}:${password}`);
+                resolve({
+                  success: true,
+                  data: { token, user: { ...user, password: undefined } },
+                  error: null,
+                });
+              } else {
+                resolve({
+                  success: false,
+                  data: null,
+                  error: "Invalid credentials",
+                });
+              }
+            }, 500);
+          },
+        );
+      }
+
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ email, password }),
       });
-      return handleResponse(response);
+      return handleResponse<{ token: string; user: any }>(response);
     },
     logout: async () => {
+      if (IS_DEMO) {
+        return new Promise<ApiResponse<null>>((resolve) => {
+          setTimeout(() => {
+            resolve({
+              success: true,
+              data: null,
+              error: null,
+            });
+          }, 500);
+        });
+      }
+
       const response = await fetch(`${API_URL}/auth/logout`, {
         method: "POST",
+        headers: { ...headers, ...getAuthHeader() },
       });
       return handleResponse(response);
     },
   },
 
-  // Backlinks
-  backlinks: {
-    getAll: async () => {
-      const response = await fetch(`${API_URL}/backlinks`);
-      return handleResponse(response) as Promise<Backlink[]>;
-    },
-    getById: async (id: string) => {
-      const response = await fetch(`${API_URL}/backlinks/${id}`);
-      return handleResponse(response) as Promise<Backlink>;
-    },
-    create: async (data: Partial<Backlink>) => {
-      const response = await fetch(`${API_URL}/backlinks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return handleResponse(response) as Promise<Backlink>;
-    },
-    update: async (id: string, data: Partial<Backlink>) => {
-      const response = await fetch(`${API_URL}/backlinks/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return handleResponse(response) as Promise<Backlink>;
-    },
-    delete: async (id: string) => {
-      const response = await fetch(`${API_URL}/backlinks/${id}`, {
-        method: "DELETE",
-      });
-      return handleResponse(response);
-    },
-    bulkCreate: async (data: { targetUrl: string; links: string[] }) => {
-      const response = await fetch(`${API_URL}/backlinks/bulk`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return handleResponse(response);
-    },
-    bulkDelete: async (ids: string[]) => {
-      const response = await fetch(`${API_URL}/backlinks/bulk-delete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-      });
-      return handleResponse(response);
-    },
-    getStats: async () => {
-      const response = await fetch(`${API_URL}/backlinks/stats`);
-      return handleResponse(response) as Promise<BacklinkStats>;
-    },
-  },
-
-  // Customers
-  customers: {
-    getAll: async () => {
-      const response = await fetch(`${API_URL}/customers`);
-      return handleResponse(response) as Promise<Customer[]>;
-    },
-    getById: async (id: string) => {
-      const response = await fetch(`${API_URL}/customers/${id}`);
-      return handleResponse(response) as Promise<Customer>;
-    },
-    create: async (data: Partial<Customer>) => {
-      const response = await fetch(`${API_URL}/customers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return handleResponse(response) as Promise<Customer>;
-    },
-    update: async (id: string, data: Partial<Customer>) => {
-      const response = await fetch(`${API_URL}/customers/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return handleResponse(response) as Promise<Customer>;
-    },
-    delete: async (id: string) => {
-      const response = await fetch(`${API_URL}/customers/${id}`, {
-        method: "DELETE",
-      });
-      return handleResponse(response);
-    },
-    addCredits: async (id: string, amount: number) => {
-      const response = await fetch(`${API_URL}/customers/${id}/credits`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
-      });
-      return handleResponse(response);
-    },
-  },
-
-  // Packages
-  packages: {
-    getAll: async () => {
-      const response = await fetch(`${API_URL}/packages`);
-      return handleResponse(response) as Promise<Package[]>;
-    },
-    getById: async (id: string) => {
-      const response = await fetch(`${API_URL}/packages/${id}`);
-      return handleResponse(response) as Promise<Package>;
-    },
-    create: async (data: Partial<Package>) => {
-      const response = await fetch(`${API_URL}/packages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return handleResponse(response) as Promise<Package>;
-    },
-    update: async (id: string, data: Partial<Package>) => {
-      const response = await fetch(`${API_URL}/packages/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return handleResponse(response) as Promise<Package>;
-    },
-    delete: async (id: string) => {
-      const response = await fetch(`${API_URL}/packages/${id}`, {
-        method: "DELETE",
-      });
-      return handleResponse(response);
-    },
-  },
-
-  // Orders
-  orders: {
-    getAll: async () => {
-      const response = await fetch(`${API_URL}/orders`);
-      return handleResponse(response) as Promise<Order[]>;
-    },
-    getById: async (id: string) => {
-      const response = await fetch(`${API_URL}/orders/${id}`);
-      return handleResponse(response) as Promise<Order>;
-    },
-    create: async (data: Partial<Order>) => {
-      const response = await fetch(`${API_URL}/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return handleResponse(response) as Promise<Order>;
-    },
-    update: async (id: string, data: Partial<Order>) => {
-      const response = await fetch(`${API_URL}/orders/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return handleResponse(response) as Promise<Order>;
-    },
-  },
-
-  // Site Metrics
-  metrics: {
-    getSiteMetrics: async (url: string) => {
-      const response = await fetch(
-        `${API_URL}/metrics/site?url=${encodeURIComponent(url)}`,
-      );
-      return handleResponse(response) as Promise<SiteMetrics>;
-    },
-    bulkCheck: async (urls: string[]) => {
-      const response = await fetch(`${API_URL}/metrics/bulk`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ urls }),
-      });
-      return handleResponse(response) as Promise<Record<string, SiteMetrics>>;
-    },
-  },
+  // Add other API endpoints with demo data handling...
 };

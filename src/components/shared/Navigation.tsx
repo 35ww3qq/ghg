@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   Link as LinkIcon,
@@ -20,7 +21,8 @@ import {
 
 const Navigation = () => {
   const location = useLocation();
-  const isAdmin = location.pathname.startsWith("/admin");
+  const { logout, user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const clientLinks = [
     {
@@ -103,7 +105,7 @@ const Navigation = () => {
         <Button
           variant="ghost"
           className="text-gray-300 hover:text-white hover:bg-transparent gap-2"
-          onClick={() => console.log("Logout")}
+          onClick={logout}
         >
           <LogOut size={18} />
           Çıkış
