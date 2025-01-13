@@ -5,53 +5,48 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Upload, Download, Play, AlertCircle } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
+import { useBacklinks } from "@/hooks/useBacklinks";
 
 const BulkLinkManager = () => {
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [targetUrl, setTargetUrl] = useState("");
+  const [links, setLinks] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const { bulkCreateBacklinks } = useBacklinks();
 
-  const handleImport = () => {
-    setIsProcessing(true);
-    // Simüle edilmiş ilerleme
-    let currentProgress = 0;
-    const interval = setInterval(() => {
-      currentProgress += 10;
-      setProgress(currentProgress);
-      if (currentProgress >= 100) {
-        clearInterval(interval);
-        setIsProcessing(false);
-        setIsImportDialogOpen(false);
-      }
-    }, 500);
+  const handleBulkAdd = async () => {
+    try {
+      setIsProcessing(true);
+
+      // Linkleri satır satır ayır ve temizle
+      const linkList = links
+        .split("\n")
+        .map((link) => link.trim())
+        .filter((link) => link.length > 0);
+
+      // Her bir site için backlink HTML'i oluştur
+      const backlinkHtml = `<a href="${targetUrl}" title="Backlink" rel="dofollow">Backlink</a>`;
+
+      // Her bir siteye backlink ekle
+      await bulkCreateBacklinks(targetUrl, linkList);
+
+      // Başarılı mesajı göster
+      alert(`${linkList.length} siteye başarıyla backlink eklendi!`);
+
+      // Formu temizle
+      setLinks("");
+      setTargetUrl("");
+    } catch (error) {
+      console.error("Backlink ekleme hatası:", error);
+      alert("Backlink eklenirken bir hata oluştu!");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-white">Toplu Link Yönetimi</h1>
-        <div className="flex gap-4">
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => setIsImportDialogOpen(true)}
-          >
-            <Upload className="h-4 w-4" />
-            İçe Aktar
-          </Button>
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Dışa Aktar
-          </Button>
-        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-6">
@@ -61,101 +56,83 @@ const BulkLinkManager = () => {
           </h3>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Hedef Site</Label>
+              <label className="text-gray-400">Hedef Site URL</label>
               <Input
-                placeholder="example.com"
+                placeholder="https://example.com"
                 className="bg-[#1e1f2e] border-0"
+                value={targetUrl}
+                onChange={(e) => setTargetUrl(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label>Linkler (Her satıra bir link)</Label>
+              <label className="text-gray-400">
+                Backlink Eklenecek Siteler (Her satıra bir site)
+              </label>
               <Textarea
-                placeholder="https://site1.com&#13;&#10;https://site2.com&#13;&#10;https://site3.com"
+                placeholder="https://site1.com\nhttps://site2.com\nhttps://site3.com"
                 className="min-h-[200px] bg-[#1e1f2e] border-0"
+                value={links}
+                onChange={(e) => setLinks(e.target.value)}
               />
             </div>
-            <Button className="w-full bg-purple-600 hover:bg-purple-700 gap-2">
+
+            <div className="bg-yellow-600/20 p-4 rounded-md flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+              <div className="text-sm text-yellow-500 space-y-2">
+                <p>Eklenecek HTML kodu:</p>
+                <code className="block bg-[#1e1f2e] p-2 rounded">
+                  {`<a href="${targetUrl || "https://example.com"}" title="Backlink" rel="dofollow">Backlink</a>`}
+                </code>
+              </div>
+            </div>
+
+            <Button
+              className="w-full bg-purple-600 hover:bg-purple-700 gap-2"
+              onClick={handleBulkAdd}
+              disabled={isProcessing || !targetUrl || !links}
+            >
               <Play className="h-4 w-4" />
-              İşlemi Başlat
+              {isProcessing ? "İşlem Devam Ediyor..." : "İşlemi Başlat"}
             </Button>
           </div>
         </Card>
 
         <Card className="bg-[#2a2b3d] p-6 border-0">
           <h3 className="text-lg font-semibold text-white mb-4">
-            Toplu Link Sil
+            Yardım & Talimatlar
           </h3>
-          <div className="space-y-4">
+          <div className="space-y-4 text-gray-400">
             <div className="space-y-2">
-              <Label>Domain Listesi (Her satıra bir domain)</Label>
-              <Textarea
-                placeholder="site1.com&#13;&#10;site2.com&#13;&#10;site3.com"
-                className="min-h-[200px] bg-[#1e1f2e] border-0"
-              />
+              <h4 className="font-medium text-white">Nasıl Çalışır?</h4>
+              <ol className="list-decimal pl-5 space-y-2">
+                <li>Hedef site URL'sini girin (backlink verilecek site)</li>
+                <li>
+                  Her satıra bir tane olacak şekilde backlink eklenecek siteleri
+                  girin
+                </li>
+                <li>"İşlemi Başlat" butonuna tıklayın</li>
+                <li>
+                  Sistem otomatik olarak her siteye backlink kodunu ekleyecektir
+                </li>
+              </ol>
             </div>
-            <div className="bg-yellow-600/20 p-4 rounded-md flex items-start gap-2">
-              <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
-              <p className="text-sm text-yellow-500">
-                Bu işlem geri alınamaz. Seçilen domainlere ait tüm backlinkler
-                kalıcı olarak silinecektir.
-              </p>
+
+            <div className="space-y-2">
+              <h4 className="font-medium text-white">Önemli Notlar</h4>
+              <ul className="list-disc pl-5 space-y-2">
+                <li>
+                  URL'leri https:// veya http:// ile başlayacak şekilde girin
+                </li>
+                <li>Her sitenin erişilebilir olduğundan emin olun</li>
+                <li>
+                  Çok fazla sayıda site eklerken işlemin tamamlanmasını bekleyin
+                </li>
+                <li>İşlem sırasında sayfadan ayrılmayın</li>
+              </ul>
             </div>
-            <Button className="w-full bg-red-600 hover:bg-red-700 gap-2">
-              <Play className="h-4 w-4" />
-              Silme İşlemini Başlat
-            </Button>
           </div>
         </Card>
       </div>
-
-      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>CSV Dosyası İçe Aktar</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="border-2 border-dashed border-gray-700 rounded-lg p-6 text-center">
-              <Input type="file" className="hidden" id="csv-upload" />
-              <Label
-                htmlFor="csv-upload"
-                className="flex flex-col items-center gap-2 cursor-pointer"
-              >
-                <Upload className="h-8 w-8 text-gray-400" />
-                <span className="text-gray-400">
-                  CSV dosyanızı buraya sürükleyin veya seçin
-                </span>
-              </Label>
-            </div>
-
-            {isProcessing && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">İşleniyor...</span>
-                  <span className="text-white">{progress}%</span>
-                </div>
-                <Progress value={progress} className="h-2" />
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsImportDialogOpen(false)}
-                disabled={isProcessing}
-              >
-                İptal
-              </Button>
-              <Button
-                className="bg-purple-600 hover:bg-purple-700"
-                onClick={handleImport}
-                disabled={isProcessing}
-              >
-                İçe Aktar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

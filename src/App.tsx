@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useRoutes } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import LoginPage from "./components/auth/LoginPage";
@@ -22,7 +22,13 @@ import BacklinkCodeGenerator from "./components/admin/BacklinkCodeGenerator";
 import CustomerManager from "./components/admin/CustomerManager";
 import BulkLinkManager from "./components/admin/BulkLinkManager";
 
+// @ts-ignore
+import routes from "tempo-routes";
+
 const App = () => {
+  // Tempo routes
+  const tempoRoutes = process.env.TEMPO ? useRoutes(routes) : null;
+
   return (
     <AuthProvider>
       <Suspense
@@ -32,6 +38,9 @@ const App = () => {
           </div>
         }
       >
+        {/* Tempo routes */}
+        {tempoRoutes}
+
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
@@ -72,6 +81,9 @@ const App = () => {
             <Route path="customers" element={<CustomerManager />} />
             <Route path="bulk-links" element={<BulkLinkManager />} />
           </Route>
+
+          {/* Add this before the catchall route */}
+          {process.env.TEMPO && <Route path="/tempobook/*" />}
 
           {/* Fallback Route */}
           <Route path="*" element={<Navigate to="/" replace />} />

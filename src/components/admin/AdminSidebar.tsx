@@ -4,12 +4,14 @@ import {
   LayoutDashboard,
   Package,
   Users,
-  ShoppingCart,
-  BarChart,
+  Link as LinkIcon,
   Settings,
   Shield,
   FileText,
   LogOut,
+  Code2,
+  Database,
+  BarChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -29,33 +31,33 @@ interface AdminSidebarProps {
 const defaultItems: SidebarItem[] = [
   {
     icon: <LayoutDashboard className="w-5 h-5" />,
-    label: "Panel",
+    label: "Dashboard",
     href: "/admin",
   },
   {
-    icon: <Package className="w-5 h-5" />,
-    label: "Paket Yönetimi",
-    href: "/admin/packages",
+    icon: <Database className="w-5 h-5" />,
+    label: "Backlink Yönetimi",
+    href: "/admin/bulk-links",
+  },
+  {
+    icon: <Code2 className="w-5 h-5" />,
+    label: "Entegrasyon Kodları",
+    href: "/admin/code-generator",
   },
   {
     icon: <Users className="w-5 h-5" />,
-    label: "Müşteri Yönetimi",
+    label: "Müşteriler",
     href: "/admin/customers",
   },
   {
-    icon: <ShoppingCart className="w-5 h-5" />,
-    label: "Sipariş Yönetimi",
-    href: "/admin/orders",
+    icon: <Package className="w-5 h-5" />,
+    label: "Paketler",
+    href: "/admin/packages",
   },
   {
     icon: <BarChart className="w-5 h-5" />,
     label: "Raporlar",
-    href: "/admin/reports",
-  },
-  {
-    icon: <FileText className="w-5 h-5" />,
-    label: "Sistem Logları",
-    href: "/admin/logs",
+    href: "/admin/analytics",
   },
   {
     icon: <Shield className="w-5 h-5" />,
