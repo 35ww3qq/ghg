@@ -8,12 +8,21 @@ interface User {
   email: string;
   role: "admin" | "client";
   name: string;
+  credits?: number;
+  status?: "active" | "suspended";
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  register: (data: {
+    email: string;
+    password: string;
+    name: string;
+  }) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -25,17 +34,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkAuth = () => {
-      const savedUser = localStorage.getItem("user");
-      const token = localStorage.getItem("token");
-      if (savedUser && token) {
-        setUser(JSON.parse(savedUser));
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (token) {
+          // Verify token and get user data
+          const response = await api.auth.verifyToken();
+          if (response.success && response.data) {
+            setUser(response.data.user);
+          } else {
+            // Token is invalid
+            localStorage.removeItem("token");
+            navigate("/login");
+          }
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     checkAuth();
-  }, []);
+  }, [navigate]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -46,19 +67,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { token, user } = response.data;
         setUser(user);
         localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
         toast({
-          title: "Success",
-          description: "Login successful",
+          title: "Başarılı",
+          description: "Giriş başarılı",
         });
         navigate(user.role === "admin" ? "/admin" : "/dashboard");
       } else {
-        throw new Error(response.error || "Invalid credentials");
+        throw new Error(response.error || "Giriş başarısız");
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Login failed",
+        title: "Hata",
+        description: error instanceof Error ? error.message : "Giriş başarısız",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (data: {
+    email: string;
+    password: string;
+    name: string;
+  }) => {
+    try {
+      setIsLoading(true);
+      const response = await api.auth.register(data);
+
+      if (response.success && response.data) {
+        const { token, user } = response.data;
+        setUser(user);
+        localStorage.setItem("token", token);
+        toast({
+          title: "Başarılı",
+          description: "Kayıt başarılı",
+        });
+        navigate("/dashboard");
+      } else {
+        throw new Error(response.error || "Kayıt başarısız");
+      }
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: error instanceof Error ? error.message : "Kayıt başarısız",
         variant: "destructive",
       });
       throw error;
@@ -73,17 +126,82 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       setUser(null);
       localStorage.removeItem("token");
-      localStorage.removeItem("user");
       toast({
-        title: "Success",
-        description: "Logged out successfully",
+        title: "Başarılı",
+        description: "Çıkış yapıldı",
       });
       navigate("/login");
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      setIsLoading(true);
+      const response = await api.auth.resetPassword(email);
+
+      if (response.success) {
+        toast({
+          title: "Başarılı",
+          description:
+            "Şifre sıfırlama bağlantısı e-posta adresinize gönderildi",
+        });
+      } else {
+        throw new Error(response.error || "Şifre sıfırlama başarısız");
+      }
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description:
+          error instanceof Error ? error.message : "Şifre sıfırlama başarısız",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateProfile = async (data: Partial<User>) => {
+    try {
+      setIsLoading(true);
+      const response = await api.auth.updateProfile(data);
+
+      if (response.success && response.data) {
+        setUser(response.data);
+        toast({
+          title: "Başarılı",
+          description: "Profil güncellendi",
+        });
+      } else {
+        throw new Error(response.error || "Profil güncelleme başarısız");
+      }
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Profil güncelleme başarısız",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        register,
+        resetPassword,
+        updateProfile,
+        isLoading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
