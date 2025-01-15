@@ -1,17 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Search,
-  Plus,
-  Edit2,
-  Trash2,
-  Mail,
-  Phone,
-  CreditCard,
-} from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
+import { adminApi } from "@/services/api";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +12,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, Edit2, Trash2, Mail, Phone, CreditCard } from "lucide-react";
 
 interface Customer {
   id: string;
@@ -32,20 +33,151 @@ interface Customer {
 }
 
 const CustomerManager = () => {
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null,
   );
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAddCreditsOpen, setIsAddCreditsOpen] = useState(false);
+  const [creditAmount, setCreditAmount] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Form state
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    credits: "0",
+    status: "active" as const,
+  });
+
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      const response = await adminApi.getUsers();
+      if (response.success) {
+        setCustomers(response.data);
+      }
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Müşteriler alınamadı",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
 
   const handleAddCustomer = () => {
-    setSelectedCustomer(null);
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      credits: "0",
+      status: "active",
+    });
     setIsAddDialogOpen(true);
   };
 
   const handleEditCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
-    setIsAddDialogOpen(true);
+    setFormData({
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+      credits: customer.credits.toString(),
+      status: customer.status,
+    });
+    setIsEditDialogOpen(true);
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (isEditDialogOpen && selectedCustomer) {
+        // Müşteri güncelleme
+        await adminApi.updateUser(selectedCustomer.id, formData);
+        toast({
+          title: "Başarılı",
+          description: "Müşteri güncellendi",
+        });
+        setIsEditDialogOpen(false);
+      } else {
+        // Yeni müşteri ekleme
+        await adminApi.createUser(formData);
+        toast({
+          title: "Başarılı",
+          description: "Müşteri eklendi",
+        });
+        setIsAddDialogOpen(false);
+      }
+      await fetchCustomers(); // Listeyi yenile
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "İşlem başarısız",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddCredits = async () => {
+    if (selectedCustomer && creditAmount) {
+      try {
+        await adminApi.addUserCredits(
+          selectedCustomer.id,
+          parseInt(creditAmount),
+        );
+        await fetchCustomers(); // Listeyi yenile
+        setIsAddCreditsOpen(false);
+        setCreditAmount("");
+        toast({
+          title: "Başarılı",
+          description: "Kredi eklendi",
+        });
+      } catch (error) {
+        toast({
+          title: "Hata",
+          description: "Kredi eklenemedi",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleStatusChange = async (
+    userId: string,
+    newStatus: Customer["status"],
+  ) => {
+    try {
+      await adminApi.updateUser(userId, { status: newStatus });
+      await fetchCustomers(); // Listeyi yenile
+      toast({
+        title: "Başarılı",
+        description: "Müşteri durumu güncellendi",
+      });
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Durum güncellenemedi",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Arama filtrelemesi
+  const filteredCustomers = customers.filter(
+    (customer) =>
+      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.email.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -55,7 +187,6 @@ const CustomerManager = () => {
           className="bg-purple-600 hover:bg-purple-700 gap-2"
           onClick={handleAddCustomer}
         >
-          <Plus className="h-4 w-4" />
           Yeni Müşteri
         </Button>
       </div>
@@ -67,6 +198,8 @@ const CustomerManager = () => {
             <Input
               placeholder="Müşteri ara..."
               className="pl-10 bg-[#1e1f2e] border-0"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
@@ -87,18 +220,7 @@ const CustomerManager = () => {
               </tr>
             </thead>
             <tbody>
-              {[
-                {
-                  id: "1",
-                  name: "John Doe",
-                  email: "john@example.com",
-                  phone: "+90 555 123 4567",
-                  credits: 500,
-                  status: "active",
-                  totalSpent: 1500,
-                  joinDate: "2024-01-15",
-                },
-              ].map((customer) => (
+              {filteredCustomers.map((customer) => (
                 <tr key={customer.id} className="border-b border-gray-700">
                   <td className="py-4">
                     <div>
@@ -163,6 +285,14 @@ const CustomerManager = () => {
                         size="icon"
                         variant="ghost"
                         className="hover:bg-red-500/20 hover:text-red-500"
+                        onClick={() =>
+                          handleStatusChange(
+                            customer.id,
+                            customer.status === "suspended"
+                              ? "active"
+                              : "suspended",
+                          )
+                        }
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -175,53 +305,135 @@ const CustomerManager = () => {
         </div>
       </Card>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+      {/* Add/Edit Customer Dialog */}
+      <Dialog
+        open={isAddDialogOpen || isEditDialogOpen}
+        onOpenChange={() => {
+          setIsAddDialogOpen(false);
+          setIsEditDialogOpen(false);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {selectedCustomer ? "Müşteriyi Düzenle" : "Yeni Müşteri Ekle"}
+              {isEditDialogOpen ? "Müşteriyi Düzenle" : "Yeni Müşteri Ekle"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label>İsim Soyisim</Label>
               <Input
-                placeholder="John Doe"
-                defaultValue={selectedCustomer?.name}
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                required
               />
             </div>
             <div className="space-y-2">
               <Label>E-posta</Label>
               <Input
                 type="email"
-                placeholder="ornek@email.com"
-                defaultValue={selectedCustomer?.email}
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                required
               />
             </div>
             <div className="space-y-2">
               <Label>Telefon</Label>
               <Input
-                placeholder="+90 555 123 4567"
-                defaultValue={selectedCustomer?.phone}
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                required
               />
             </div>
             <div className="space-y-2">
               <Label>Başlangıç Kredisi</Label>
               <Input
                 type="number"
-                placeholder="100"
-                defaultValue={selectedCustomer?.credits}
+                value={formData.credits}
+                onChange={(e) =>
+                  setFormData({ ...formData, credits: e.target.value })
+                }
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Durum</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value: Customer["status"]) =>
+                  setFormData({ ...formData, status: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Aktif</SelectItem>
+                  <SelectItem value="suspended">Askıya Alındı</SelectItem>
+                  <SelectItem value="pending">Beklemede</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAddDialogOpen(false);
+                  setIsEditDialogOpen(false);
+                }}
+              >
+                İptal
+              </Button>
+              <Button
+                type="submit"
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {isEditDialogOpen ? "Güncelle" : "Ekle"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Credits Dialog */}
+      <Dialog open={isAddCreditsOpen} onOpenChange={setIsAddCreditsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Kredi Ekle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Kullanıcı</Label>
+              <p className="text-white">{selectedCustomer?.name}</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Kredi Miktarı</Label>
+              <Input
+                type="number"
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(e.target.value)}
+                className="bg-[#1e1f2e] border-0"
               />
             </div>
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
+                onClick={() => setIsAddCreditsOpen(false)}
               >
                 İptal
               </Button>
-              <Button className="bg-purple-600 hover:bg-purple-700">
-                {selectedCustomer ? "Güncelle" : "Ekle"}
+              <Button
+                className="bg-purple-600 hover:bg-purple-700"
+                onClick={handleAddCredits}
+              >
+                Ekle
               </Button>
             </div>
           </div>

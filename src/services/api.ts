@@ -1,237 +1,80 @@
-import {
-  Backlink,
-  Customer,
-  Package,
-  Order,
-  SiteMetrics,
-  BacklinkStats,
-} from "@/types/api";
+import axios from "axios";
+import { handleApiError, rateLimitMiddleware } from "./middleware";
 
-interface ApiResponse<T> {
-  success: boolean;
-  data: T | null;
-  error: string | null;
-}
+// API instance oluştur
+const axiosInstance = axios.create({
+  baseURL:
+    import.meta.env.VITE_API_URL ||
+    "https://competent-wilbur2-b65vf.dev.tempolabs.ai/api",
+  timeout: parseInt(import.meta.env.VITE_API_TIMEOUT || "30000"),
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
+});
 
-const API_URL = import.meta.env.VITE_API_URL || "https://batuna.vn/api/";
+// Request interceptor
+axiosInstance.interceptors.request.use(
+  async (config) => {
+    // Rate limit kontrolü
+    await rateLimitMiddleware(config);
 
-const handleResponse = async <T>(
-  response: Response,
-): Promise<ApiResponse<T>> => {
-  try {
-    const data = await response.json();
-    if (!response.ok) {
-      // Handle specific error codes
-      switch (response.status) {
-        case 401:
-          localStorage.removeItem("token");
-          window.location.href = "/login";
-          break;
-        case 403:
-          throw new Error("Yetkisiz erişim");
-        case 429:
-          throw new Error("Çok fazla istek gönderildi. Lütfen bekleyin.");
-      }
-      return {
-        success: false,
-        data: null,
-        error: data.message || "API request failed",
-      };
+    // Token varsa ekle
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return {
-      success: true,
-      data,
-      error: null,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      data: null,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
-    };
-  }
-};
 
-const headers = {
-  "Content-Type": "application/json",
-  Accept: "application/json",
-};
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
 
-const getAuthHeader = () => {
-  const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+// Response interceptor
+axiosInstance.interceptors.response.use(
+  (response) => response.data,
+  handleApiError,
+);
 
+// API endpoints
 export const api = {
-  auth: {
-    login: async (email: string, password: string) => {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ email, password }),
-      });
-      return handleResponse<{ token: string; user: any }>(response);
-    },
-    register: async (data: {
-      email: string;
-      password: string;
-      name: string;
-    }) => {
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(data),
-      });
-      return handleResponse<{ token: string; user: any }>(response);
-    },
-    logout: async () => {
-      const response = await fetch(`${API_URL}/auth/logout`, {
-        method: "POST",
-        headers: { ...headers, ...getAuthHeader() },
-      });
-      return handleResponse(response);
-    },
-    resetPassword: async (email: string) => {
-      const response = await fetch(`${API_URL}/auth/reset-password`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ email }),
-      });
-      return handleResponse(response);
-    },
-  },
+  post: async (url: string, data: any) => axiosInstance.post(url, data),
+  get: async (url: string) => axiosInstance.get(url),
+  put: async (url: string, data: any) => axiosInstance.put(url, data),
+  delete: async (url: string) => axiosInstance.delete(url),
+};
 
-  backlinks: {
-    getAll: async () => {
-      const response = await fetch(`${API_URL}/backlinks`, {
-        headers: { ...headers, ...getAuthHeader() },
-      });
-      return handleResponse<Backlink[]>(response);
-    },
-    getById: async (id: string) => {
-      const response = await fetch(`${API_URL}/backlinks/${id}`, {
-        headers: { ...headers, ...getAuthHeader() },
-      });
-      return handleResponse<Backlink>(response);
-    },
-    create: async (data: Partial<Backlink>) => {
-      const response = await fetch(`${API_URL}/backlinks`, {
-        method: "POST",
-        headers: { ...headers, ...getAuthHeader() },
-        body: JSON.stringify(data),
-      });
-      return handleResponse<Backlink>(response);
-    },
-    update: async (id: string, data: Partial<Backlink>) => {
-      const response = await fetch(`${API_URL}/backlinks/${id}`, {
-        method: "PUT",
-        headers: { ...headers, ...getAuthHeader() },
-        body: JSON.stringify(data),
-      });
-      return handleResponse<Backlink>(response);
-    },
-    delete: async (id: string) => {
-      const response = await fetch(`${API_URL}/backlinks/${id}`, {
-        method: "DELETE",
-        headers: { ...headers, ...getAuthHeader() },
-      });
-      return handleResponse(response);
-    },
-    bulkCreate: async (data: { targetUrl: string; links: string[] }) => {
-      const response = await fetch(`${API_URL}/backlinks/bulk`, {
-        method: "POST",
-        headers: { ...headers, ...getAuthHeader() },
-        body: JSON.stringify(data),
-      });
-      return handleResponse<{ success: boolean; results: any[] }>(response);
-    },
-    getStats: async () => {
-      const response = await fetch(`${API_URL}/backlinks/stats`, {
-        headers: { ...headers, ...getAuthHeader() },
-      });
-      return handleResponse<BacklinkStats>(response);
-    },
-    checkStatus: async (id: string) => {
-      const response = await fetch(`${API_URL}/backlinks/${id}/status`, {
-        headers: { ...headers, ...getAuthHeader() },
-      });
-      return handleResponse<{ status: string; lastChecked: string }>(response);
-    },
-  },
+// Admin API endpoints
+export const adminApi = {
+  getSystemMetrics: () => api.get("/admin/system-stats"),
+  getUsers: () => api.get("/admin/users"),
+  updateUser: (id: string, data: any) => api.put(`/admin/users/${id}`, data),
+  createUser: (data: any) => api.post("/admin/users", data),
+  addUserCredits: (id: string, amount: number) =>
+    api.post(`/admin/users/${id}/credits`, { amount }),
+};
 
-  market: {
-    getAvailableLinks: async (filters?: any) => {
-      const queryString = filters ? `?${new URLSearchParams(filters)}` : "";
-      const response = await fetch(`${API_URL}/market${queryString}`, {
-        headers: { ...headers, ...getAuthHeader() },
-      });
-      return handleResponse<Package[]>(response);
-    },
-    purchase: async (
-      packageId: string,
-      data: { targetUrl: string; keyword: string },
-    ) => {
-      const response = await fetch(`${API_URL}/market/${packageId}/purchase`, {
-        method: "POST",
-        headers: { ...headers, ...getAuthHeader() },
-        body: JSON.stringify(data),
-      });
-      return handleResponse<Order>(response);
-    },
-  },
+// Backlink API endpoints
+export const backlinkApi = {
+  getMetrics: () => api.get("/backlinks/metrics"),
+  getAllBacklinks: () => api.get("/backlinks"),
+  getBacklinkById: (id: string) => api.get(`/backlinks/${id}`),
+  createBacklink: (data: any) => api.post("/backlinks", data),
+  updateBacklink: (id: string, data: any) => api.put(`/backlinks/${id}`, data),
+  deleteBacklink: (id: string) => api.delete(`/backlinks/${id}`),
+  checkStatus: (id: string) => api.get(`/backlinks/${id}/status`),
+  verifyIndexing: (id: string) => api.post(`/backlinks/${id}/verify-indexing`),
+};
 
-  credits: {
-    getBalance: async () => {
-      const response = await fetch(`${API_URL}/credits/balance`, {
-        headers: { ...headers, ...getAuthHeader() },
-      });
-      return handleResponse<{ balance: number }>(response);
-    },
-    addCredits: async (amount: number, paymentMethod: string) => {
-      const response = await fetch(`${API_URL}/credits/add`, {
-        method: "POST",
-        headers: { ...headers, ...getAuthHeader() },
-        body: JSON.stringify({ amount, paymentMethod }),
-      });
-      return handleResponse<{ balance: number; transactionId: string }>(
-        response,
-      );
-    },
-    getTransactions: async () => {
-      const response = await fetch(`${API_URL}/credits/transactions`, {
-        headers: { ...headers, ...getAuthHeader() },
-      });
-      return handleResponse<any[]>(response);
-    },
-  },
+// Credit API endpoints
+export const creditApi = {
+  getBalance: () => api.get("/credits/balance"),
+  getTransactions: () => api.get("/credits/transactions"),
+  addCredits: (amount: number) => api.post("/credits/add", { amount }),
+};
 
-  admin: {
-    getUsers: async () => {
-      const response = await fetch(`${API_URL}/admin/users`, {
-        headers: { ...headers, ...getAuthHeader() },
-      });
-      return handleResponse<Customer[]>(response);
-    },
-    updateUser: async (userId: string, data: Partial<Customer>) => {
-      const response = await fetch(`${API_URL}/admin/users/${userId}`, {
-        method: "PUT",
-        headers: { ...headers, ...getAuthHeader() },
-        body: JSON.stringify(data),
-      });
-      return handleResponse<Customer>(response);
-    },
-    getSystemStats: async () => {
-      const response = await fetch(`${API_URL}/admin/stats`, {
-        headers: { ...headers, ...getAuthHeader() },
-      });
-      return handleResponse<any>(response);
-    },
-    getLogs: async (filters?: any) => {
-      const queryString = filters ? `?${new URLSearchParams(filters)}` : "";
-      const response = await fetch(`${API_URL}/admin/logs${queryString}`, {
-        headers: { ...headers, ...getAuthHeader() },
-      });
-      return handleResponse<any[]>(response);
-    },
-  },
+// Market API endpoints
+export const marketApi = {
+  getAvailableLinks: () => api.get("/market/available-links"),
+  purchase: (data: any) => api.post("/market/purchase", data),
 };

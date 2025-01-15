@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import LoginPage from "./components/auth/LoginPage";
@@ -22,13 +22,14 @@ import AdminDashboard from "./components/admin/AdminDashboard";
 import BacklinkMarket from "./components/admin/BacklinkMarket";
 import BacklinkAnalytics from "./components/admin/BacklinkAnalytics";
 import BacklinkSettings from "./components/admin/BacklinkSettings";
-import BacklinkCodeGenerator from "./components/admin/BacklinkCodeGenerator";
-import CustomerManager from "./components/admin/CustomerManager";
 import BulkLinkManager from "./components/admin/BulkLinkManager";
-import AdminSettings from "./components/admin/AdminSettings";
+import CustomerManager from "./components/admin/CustomerManager";
 import AdminLogs from "./components/admin/AdminLogs";
-import AdminReports from "./components/admin/AdminReports";
 import AdminSecurity from "./components/admin/AdminSecurity";
+import SystemMonitor from "./components/admin/SystemMonitor";
+import UserManagement from "./components/admin/UserManagement";
+import CodeGenerator from "./components/admin/CodeGenerator";
+import ApiSettingsPanel from "./components/admin/ApiSettingsPanel";
 
 // Loading Component
 const LoadingScreen = () => (
@@ -45,52 +46,35 @@ const App = () => {
     <AuthProvider>
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
-          {/* Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
 
           {/* Client Routes */}
-          <Route
-            element={
-              <ProtectedRoute>
-                <MainLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="link-market" element={<BacklinkPurchase />} />
-            <Route path="my-links" element={<MyLinks />} />
-            <Route path="premium-indexer" element={<PremiumIndexer />} />
-            <Route path="packages" element={<Packages />} />
-            <Route path="invoices" element={<Invoices />} />
-            <Route path="support" element={<Support />} />
-            <Route path="documentation" element={<Documentation />} />
-          </Route>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/link-market" element={<BacklinkPurchase />} />
+          <Route path="/my-links" element={<MyLinks />} />
+          <Route path="/premium-indexer" element={<PremiumIndexer />} />
+          <Route path="/packages" element={<Packages />} />
+          <Route path="/invoices" element={<Invoices />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/documentation" element={<Documentation />} />
 
           {/* Admin Routes */}
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute requireAdmin>
-                <AdminLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<AdminDashboard />} />
-            <Route path="market" element={<BacklinkMarket />} />
-            <Route path="analytics" element={<BacklinkAnalytics />} />
-            <Route path="settings" element={<BacklinkSettings />} />
-            <Route path="code-generator" element={<BacklinkCodeGenerator />} />
-            <Route path="customers" element={<CustomerManager />} />
-            <Route path="bulk-links" element={<BulkLinkManager />} />
-            <Route path="system-settings" element={<AdminSettings />} />
-            <Route path="logs" element={<AdminLogs />} />
-            <Route path="reports" element={<AdminReports />} />
-            <Route path="security" element={<AdminSecurity />} />
-          </Route>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/market" element={<BacklinkMarket />} />
+          <Route path="/admin/analytics" element={<BacklinkAnalytics />} />
+          <Route path="/admin/settings" element={<BacklinkSettings />} />
+          <Route path="/admin/customers" element={<CustomerManager />} />
+          <Route path="/admin/bulk-links" element={<BulkLinkManager />} />
+          <Route path="/admin/logs" element={<AdminLogs />} />
+          <Route path="/admin/security" element={<AdminSecurity />} />
+          <Route path="/admin/system" element={<SystemMonitor />} />
+          <Route path="/admin/users" element={<UserManagement />} />
+          <Route path="/admin/code-generator" element={<CodeGenerator />} />
+          <Route path="/admin/api-settings" element={<ApiSettingsPanel />} />
 
           {/* 404 Route */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Home />} />
         </Routes>
       </Suspense>
     </AuthProvider>

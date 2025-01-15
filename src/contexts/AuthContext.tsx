@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
 import { toast } from "@/components/ui/use-toast";
+import { initializeSocket, disconnectSocket } from "@/services/socket";
 
 interface User {
   id: string;
@@ -38,12 +39,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const token = localStorage.getItem("token");
         if (token) {
-          // Verify token and get user data
-          const response = await api.auth.verifyToken();
+          // Token doğrulama
+          const response = await api.post("/auth/validate_token", { token });
           if (response.success && response.data) {
             setUser(response.data.user);
+            // WebSocket bağlantısını sadece production'da başlat
+            if (process.env.NODE_ENV === "production") {
+            }
+            initializeSocket(response.data.user.id);
           } else {
-            // Token is invalid
+            // Token geçersiz
             localStorage.removeItem("token");
             navigate("/login");
           }
@@ -56,17 +61,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     checkAuth();
+
+    // Cleanup
+    return () => {
+      disconnectSocket();
+    };
   }, [navigate]);
 
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await api.auth.login(email, password);
+      const response = await api.post("/auth/login", { email, password });
 
       if (response.success && response.data) {
         const { token, user } = response.data;
         setUser(user);
         localStorage.setItem("token", token);
+        // WebSocket bağlantısını sadece production'da başlat
+        if (process.env.NODE_ENV === "production") {
+        }
+        initializeSocket(user.id);
         toast({
           title: "Başarılı",
           description: "Giriş başarılı",
@@ -94,12 +108,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }) => {
     try {
       setIsLoading(true);
-      const response = await api.auth.register(data);
+      const response = await api.post("/auth/register", data);
 
       if (response.success && response.data) {
         const { token, user } = response.data;
         setUser(user);
         localStorage.setItem("token", token);
+        // WebSocket bağlantısını sadece production'da başlat
+        if (process.env.NODE_ENV === "production") {
+        }
+        initializeSocket(user.id);
         toast({
           title: "Başarılı",
           description: "Kayıt başarılı",
@@ -122,10 +140,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     try {
-      await api.auth.logout();
+      await api.post("/auth/logout");
     } finally {
       setUser(null);
       localStorage.removeItem("token");
+      // WebSocket bağlantısını kapat
+      disconnectSocket();
       toast({
         title: "Başarılı",
         description: "Çıkış yapıldı",
@@ -137,7 +157,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const resetPassword = async (email: string) => {
     try {
       setIsLoading(true);
-      const response = await api.auth.resetPassword(email);
+      const response = await api.post("/auth/reset_password", { email });
 
       if (response.success) {
         toast({
@@ -164,7 +184,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const updateProfile = async (data: Partial<User>) => {
     try {
       setIsLoading(true);
-      const response = await api.auth.updateProfile(data);
+      const response = await api.put("/auth/update_profile", data);
 
       if (response.success && response.data) {
         setUser(response.data);

@@ -1,16 +1,17 @@
 <?php
 class Database {
-    private $host = "localhost";
-    private $database_name = "backlink_db";
-    private $username = "root";
-    private $password = "";
+    private $host = DB_HOST;
+    private $db_name = DB_NAME;
+    private $username = DB_USER;
+    private $password = DB_PASS;
     public $conn;
 
     public function getConnection() {
         $this->conn = null;
+
         try {
             $this->conn = new PDO(
-                "mysql:host=" . $this->host . ";dbname=" . $this->database_name,
+                "mysql:host=" . $this->host . ";dbname=" . $this->db_name,
                 $this->username,
                 $this->password
             );
@@ -19,6 +20,7 @@ class Database {
         } catch(PDOException $e) {
             echo "Connection error: " . $e->getMessage();
         }
+
         return $this->conn;
     }
 }

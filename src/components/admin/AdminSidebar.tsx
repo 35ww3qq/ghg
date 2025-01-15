@@ -2,16 +2,19 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
-  Package,
-  Users,
   Link as LinkIcon,
-  Settings,
-  Shield,
+  Users,
   FileText,
+  Settings,
+  BarChart,
+  Database,
+  Package,
+  AlertCircle,
+  Shield,
   LogOut,
   Code2,
-  Database,
-  BarChart,
+  Gauge,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -35,14 +38,9 @@ const defaultItems: SidebarItem[] = [
     href: "/admin",
   },
   {
-    icon: <Database className="w-5 h-5" />,
-    label: "Backlink Yönetimi",
-    href: "/admin/bulk-links",
-  },
-  {
-    icon: <Code2 className="w-5 h-5" />,
-    label: "Entegrasyon Kodları",
-    href: "/admin/code-generator",
+    icon: <LinkIcon className="w-5 h-5" />,
+    label: "Link Market",
+    href: "/admin/market",
   },
   {
     icon: <Users className="w-5 h-5" />,
@@ -50,14 +48,19 @@ const defaultItems: SidebarItem[] = [
     href: "/admin/customers",
   },
   {
-    icon: <Package className="w-5 h-5" />,
-    label: "Paketler",
-    href: "/admin/packages",
+    icon: <Database className="w-5 h-5" />,
+    label: "Toplu İşlemler",
+    href: "/admin/bulk-links",
   },
   {
     icon: <BarChart className="w-5 h-5" />,
-    label: "Raporlar",
+    label: "Analizler",
     href: "/admin/analytics",
+  },
+  {
+    icon: <AlertCircle className="w-5 h-5" />,
+    label: "Sistem Logları",
+    href: "/admin/logs",
   },
   {
     icon: <Shield className="w-5 h-5" />,
@@ -65,9 +68,24 @@ const defaultItems: SidebarItem[] = [
     href: "/admin/security",
   },
   {
-    icon: <Settings className="w-5 h-5" />,
-    label: "Ayarlar",
-    href: "/admin/settings",
+    icon: <Gauge className="w-5 h-5" />,
+    label: "Sistem Monitörü",
+    href: "/admin/system",
+  },
+  {
+    icon: <Users className="w-5 h-5" />,
+    label: "Kullanıcı Yönetimi",
+    href: "/admin/users",
+  },
+  {
+    icon: <Code2 className="w-5 h-5" />,
+    label: "Kod Üretici",
+    href: "/admin/code-generator",
+  },
+  {
+    icon: <Settings2 className="w-5 h-5" />,
+    label: "API Ayarları",
+    href: "/admin/api-settings",
   },
 ];
 
